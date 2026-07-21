@@ -1,0 +1,24 @@
+# O site é estático: não há build, dependências nem servidor no repo.
+# Isto aqui existe só pra barrar o que o ambiente local gera sozinho.
+
+# Node (sobras do server.js que foi aposentado)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Estado/logs do backend desativado — nunca mais devem voltar ao repo
+consensus-data.json
+logs/
+*.log
+
+# Editores e SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Ferramentas locais
+.claude/
+.env
+.env.*

@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Corretor de Bingos | VCTGomes</title>
+<meta name="description" content="Cadastre as cartelas e corrija o bingo na hora: digite os números sorteados e o app marca tudo e avisa quem bateu.">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D0E13" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="./res/bingo_icon_512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./res/bingo_icon_192.png">
+<!-- iOS: PWA instalável via "Adicionar à Tela de Início" -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bingos">
+<link rel="apple-touch-icon" href="./res/apple-touch-icon.png">
+<!-- Design system da marca (tokens M3 + Inter) + Font Awesome -->
+<link rel="stylesheet" href="./res/fonts/fonts.css">
+<link rel="stylesheet" href="./res/fonts/fa/css/all.min.css">
+<link rel="stylesheet" href="./res/assets/css/rmf.css">
+<script src="./res/assets/js/m3-appbar-scroll.js" defer></script>
+<style>
+/* ── Específicos do Corretor de Bingos (consomem os tokens do rmf.css) ── */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  font-family:var(--md-ref-typeface-plain);
+  background:var(--md-sys-color-background); color:var(--md-sys-color-on-surface);
+  padding-bottom:env(safe-area-inset-bottom); -webkit-font-smoothing:antialiased;
+  min-height:100dvh;display:flex;flex-direction:column;   /* header + app preenchem a tela, sem sobrar */
+}
+.app{max-width:760px;margin:0 auto;width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
+
+.topbar{
+  position:sticky;top:0;z-index:20;background:var(--md-sys-color-surface);
+  padding-top:env(safe-area-inset-top);
+  transition:background-color 200ms ease;
+}
+.topbar.is-scrolled{background:var(--md-rmf-appbar-scrolled)}
+.topbar-inner{
+  position:relative;
+  padding:12px 20px;display:flex;align-items:center;gap:12px;
+}
+.brand-logo{width:40px;height:40px;flex:0 0 auto;border-radius:11px}
+.topbar-back{
+  width:44px;height:44px;flex:0 0 auto;border:none;border-radius:50%;background:transparent;cursor:pointer;
+  margin-left:-6px;color:var(--md-sys-color-on-surface-variant);font-size:1.05rem;
+  display:inline-flex;align-items:center;justify-content:center;transition:background .15s;
+}
+.topbar-back:hover{background:var(--md-sys-color-surface-container-high)}
+.topbar-back[hidden]{display:none}
+.topbar h1{font-family:var(--md-ref-typeface-brand);font-size:1.18rem;margin:0;font-weight:600;letter-spacing:-.015em}
+.topbar h1 small{display:block;font-size:.72rem;font-weight:500;color:var(--md-sys-color-on-surface-variant);letter-spacing:0}
+.topbar .spacer{flex:1}
+.icon-btn{
+  width:44px;height:44px;border:none;border-radius:50%;background:transparent;
+  color:var(--md-sys-color-on-surface-variant);font-size:1.05rem;cursor:pointer;display:grid;place-items:center;
+  transition:background .15s;
+}
+.icon-btn:hover{background:var(--md-sys-color-surface-container-high)}
+
+main{flex:1;padding:4px 16px 124px}
+main.home{padding-bottom:150px}
+.hidden{display:none!important}
+
+.card{margin:14px 0}
+h2.section{font-size:1.02rem;margin:18px 4px 6px;font-weight:700}
+.muted{color:var(--md-sys-color-on-surface-variant)}
+
+/* botão danger (complementa as variantes .nv-btn do rmf.css) */
+.nv-btn--danger{background:transparent;color:var(--md-sys-color-error);border-color:var(--rmf-danger-border)}
+.nv-btn--danger:hover{background:var(--rmf-danger-fill)}
+.nv-btn.lg{height:52px;font-size:1rem}
+
+.fab-row{position:fixed;left:0;right:0;bottom:0;z-index:15;
+  padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);
+  display:flex;gap:12px;max-width:760px;margin:0 auto;
+  background:linear-gradient(transparent,var(--md-sys-color-background) 34%);}
+.fab-row .nv-btn{flex:1}
+
+/* ── FABs Material Design (Home) ── */
+.fab-main{
+  position:fixed;z-index:16;
+  bottom:calc(1.5rem + env(safe-area-inset-bottom));
+  right:calc(1.5rem + env(safe-area-inset-right));
+  height:56px;padding:0 22px;border-radius:16px;border:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:11px;
+  background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);
+  font:inherit;font-size:1rem;font-weight:600;
+  box-shadow:0 6px 18px rgba(0,0,0,.22);transition:box-shadow .15s,transform .15s;
+}
+.fab-main i{font-size:1.05rem}
+.fab-main:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.fab-mini{
+  position:fixed;z-index:16;
+  bottom:calc(1.5rem + 70px + env(safe-area-inset-bottom));
+  right:calc(1.5rem + env(safe-area-inset-right));
+  width:48px;height:48px;border-radius:15px;border:none;cursor:pointer;
+  display:grid;place-items:center;font-size:1.2rem;
+  background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);
+  box-shadow:0 4px 12px rgba(0,0,0,.18);transition:box-shadow .15s,transform .15s;
+}
+.fab-mini:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.24)}
+
+/* ── Grade BINGO ── */
+.bingo{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:340px;margin:0 auto}
+.bingo .head{
+  aspect-ratio:1;display:grid;place-items:center;font-weight:800;font-size:1.15rem;
+  border-radius:var(--rmf-radius-sm);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);
+}
+.bingo .cell{
+  aspect-ratio:1;display:grid;place-items:center;border-radius:var(--rmf-radius-sm);position:relative;
+  background:var(--md-sys-color-surface-container-high);font-size:1.15rem;font-weight:700;border:1.5px solid transparent;
+}
+.bingo .cell.free{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:.62rem;font-weight:800;letter-spacing:.05em}
+.bingo .cell.marked{background:var(--md-sys-color-success-container);color:var(--md-sys-color-success);border-color:var(--rmf-success-border)}
+.bingo .cell.marked .tick{position:absolute;top:3px;right:4px;font-size:.6rem;opacity:.8}
+.bingo input{
+  width:100%;height:100%;border:none;background:transparent;text-align:center;
+  font:inherit;font-weight:700;font-size:1.1rem;color:var(--md-sys-color-on-surface);border-radius:var(--rmf-radius-sm);
+}
+.bingo input:focus{outline:2px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface)}
+.bingo input.bad{outline:2px solid var(--md-sys-color-error);background:var(--rmf-danger-fill)}
+
+.hint{font-size:.82rem;color:var(--md-sys-color-on-surface-variant);margin:12px 4px 0;text-align:center}
+.hint.err{color:var(--md-sys-color-error);font-weight:600}
+.hint.ok{color:var(--md-sys-color-success);font-weight:600}
+
+/* lista de cartelas (home) */
+.cardrow{display:flex;align-items:center;gap:14px;padding:14px 16px;margin:10px 0;
+  background:var(--md-sys-color-surface-container-low);border-radius:var(--rmf-radius-md);box-shadow:var(--rmf-elev-1);cursor:pointer;
+  transition:box-shadow .15s}
+.cardrow:hover{box-shadow:var(--rmf-elev-2)}
+.cardrow .mini{display:grid;grid-template-columns:repeat(5,7px);grid-auto-rows:7px;gap:2px;flex:0 0 auto}
+.cardrow .mini i{background:var(--md-sys-color-outline-variant);border-radius:1.5px}
+.cardrow .mini i.f{background:var(--md-sys-color-primary)}
+.cardrow .info{flex:1;min-width:0}
+.cardrow .info b{font-size:1rem}
+.cardrow .info span{display:block;font-size:.82rem;color:var(--md-sys-color-on-surface-variant)}
+.cardrow .chev{color:var(--md-sys-color-outline)}
+
+/* campos do editor */
+.field{margin:0 0 16px}
+
+/* ── Play ── */
+.dial{padding:18px;text-align:center}
+.lastnum{font-size:.74rem;color:var(--md-sys-color-on-surface-variant);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.lastnum b{display:block;font-size:3.4rem;font-weight:800;line-height:1.05;color:var(--md-sys-color-primary);margin-top:2px}
+.lastnum b .lett{font-size:1.4rem;vertical-align:super;color:var(--md-sys-color-on-surface-variant);margin-right:4px}
+.numinput{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+.numinput input{
+  flex:1;min-width:0;height:60px;padding:0 16px;border-radius:var(--rmf-radius-md);
+  border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-container-low);
+  color:var(--md-sys-color-on-surface);font-size:1.6rem;font-weight:800;text-align:center;
+}
+.numinput input:focus{outline:none;border-color:var(--md-sys-color-primary);box-shadow:inset 0 0 0 1px var(--md-sys-color-primary)}
+.numinput .nv-btn{flex:0 0 auto;height:60px;padding:0 26px;font-size:1rem;white-space:nowrap}
+/* Só em telas bem pequenas: o botão "Marcar" desce para a linha de baixo */
+@media (max-width:360px){
+  .numinput input{flex-basis:100%}
+  .numinput .nv-btn{flex:1 0 100%}
+}
+.count-summary{display:flex;justify-content:space-around;text-align:center;margin:16px 0 0}
+.count-summary div b{display:block;font-size:1.5rem;font-weight:800;color:var(--md-sys-color-primary)}
+.count-summary div span{font-size:.72rem;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.05em}
+
+.drawn{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{
+  font-size:.85rem;font-weight:700;padding:7px 12px;border-radius:var(--rmf-radius-full);
+  background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface-variant);cursor:pointer;
+  border:1px solid var(--md-sys-color-outline-variant);display:inline-flex;align-items:center;gap:7px;
+}
+.chip:hover{background:var(--md-sys-color-surface-container-highest)}
+.chip .x{opacity:.55;font-size:.72rem}
+
+.pcard{background:var(--md-sys-color-surface-container-low);border-radius:var(--rmf-radius-md);box-shadow:var(--rmf-elev-1);
+  padding:14px 16px;margin:10px 0;display:flex;align-items:center;gap:14px;transition:box-shadow .15s}
+.pcard.win{background:var(--md-sys-color-success-container);box-shadow:inset 0 0 0 1.5px var(--rmf-success-border),var(--rmf-elev-1)}
+.pcard.close{box-shadow:inset 0 0 0 1.5px var(--rmf-warning-border),var(--rmf-elev-1)}
+.pcard .pinfo{flex:1;min-width:0}
+.pcard .pinfo b{font-size:1rem}
+.pcard .pinfo .bar{height:7px;border-radius:var(--rmf-radius-full);background:var(--md-sys-color-surface-container-highest);margin-top:8px;overflow:hidden}
+.pcard .pinfo .bar i{display:block;height:100%;background:var(--md-sys-color-primary);border-radius:var(--rmf-radius-full);transition:width .25s}
+.pcard.win .pinfo .bar i{background:var(--md-sys-color-success)}
+.pcard .badge{flex:0 0 auto;font-weight:700;font-size:.82rem;text-align:right;min-width:64px;color:var(--md-sys-color-on-surface-variant)}
+.pcard .badge .n{font-size:1.5rem;display:block;line-height:1;color:var(--md-sys-color-primary)}
+.pcard.win .badge,.pcard.win .badge .n{color:var(--md-sys-color-success)}
+.pcard.close .badge,.pcard.close .badge .n{color:var(--md-sys-color-warning)}
+
+/* ── Modal ── */
+.scrim{position:fixed;inset:0;background:color-mix(in srgb,var(--md-sys-color-scrim) 54%,transparent);
+  z-index:40;display:grid;place-items:center;padding:20px}
+.modal{background:var(--md-sys-color-surface);border-radius:var(--rmf-radius-lg);box-shadow:var(--rmf-elev-modal);
+  max-width:380px;width:100%;padding:26px;text-align:center;animation:pop .22s ease}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{margin:0 0 6px;font-size:1.4rem;font-family:var(--md-ref-typeface-brand);font-weight:700}
+.modal .winners{font-size:1.1rem;font-weight:700;color:var(--md-sys-color-success);margin:6px 0 14px}
+.modal .winners i{margin-right:7px}
+.modal .row{display:flex;gap:10px;margin-top:18px}
+.modal .row .nv-btn{flex:1}
+.burst{font-size:3rem;color:var(--md-sys-color-warning);animation:wiggle .6s ease infinite alternate}
+@keyframes wiggle{from{transform:rotate(-8deg) scale(1)}to{transform:rotate(8deg) scale(1.1)}}
+
+/* ── Modal "Sobre" ── */
+.modal--about{max-width:440px;padding:0;text-align:left;
+  max-height:min(86dvh,720px);display:flex;flex-direction:column}
+.abt-modal__head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 20px 14px;border-bottom:1px solid var(--md-sys-color-outline-variant);flex:0 0 auto}
+.abt-modal__title{display:flex;align-items:center;gap:10px;
+  font-family:var(--md-ref-typeface-brand);font-size:1.15rem;font-weight:700}
+.abt-modal__title i{color:var(--md-sys-color-primary)}
+.abt-body{padding:26px 20px 24px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;text-align:center}
+
+.abt-icon img{width:92px;height:92px;border-radius:22px;box-shadow:var(--rmf-elev-1)}
+.abt-name{font-family:var(--md-ref-typeface-brand);font-size:1.34rem;font-weight:700;
+  margin-top:13px;letter-spacing:-.015em}
+.abt-ver{font-size:.84rem;color:var(--md-sys-color-on-surface-variant);margin-top:2px}
+.abt-slogan{margin-top:18px;font-size:.98rem;font-weight:600}
+.abt-credit{display:inline-flex;align-items:center;gap:8px;margin-top:12px;
+  color:var(--md-sys-color-on-surface);text-decoration:none;font-size:.83rem}
+.abt-credit i{color:var(--md-sys-color-primary)}
+.abt-credit__link{font-weight:600}
+.abt-credit__year{color:var(--md-sys-color-on-surface-variant)}
+
+.abt-label{text-align:left;font-size:.74rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--md-sys-color-on-surface-variant);margin:0 2px 8px}
+.abt-card{text-align:left;background:var(--md-sys-color-surface-container-low);
+  border-radius:var(--rmf-radius-md);padding:15px 16px;font-size:.88rem;line-height:1.55}
+.abt-card code{font-family:"Roboto Mono",monospace;font-size:.84em;
+  background:var(--md-sys-color-surface-container-high);padding:1px 6px;border-radius:5px}
+.abt-src{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px}
+.abt-src:last-child{margin-bottom:0}
+.abt-src > i{flex:0 0 auto;margin-top:4px;font-size:.78rem;color:var(--md-sys-color-primary)}
+
+.abt-sync{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 16px;background:var(--md-sys-color-surface-container-low);
+  border-radius:var(--rmf-radius-sm);margin-bottom:7px;font-size:.86rem;text-align:left}
+.abt-sync:last-child{margin-bottom:0}
+.abt-sync__l{display:inline-flex;align-items:center;gap:9px;color:var(--md-sys-color-on-surface-variant)}
+.abt-sync__l i{width:16px;text-align:center}
+.abt-sync__v{font-family:"Roboto Mono",monospace;font-size:.82rem;font-weight:500;text-align:right;min-width:0}
+
+.abt-tile{display:flex;width:100%;align-items:center;gap:13px;padding:14px 16px;margin-bottom:7px;
+  border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--rmf-radius-md);
+  background:transparent;color:var(--md-sys-color-on-surface);font:inherit;font-size:.9rem;font-weight:600;
+  text-align:left;text-decoration:none;cursor:pointer;transition:background .15s}
+.abt-tile:hover{background:var(--md-sys-color-surface-container-high)}
+.abt-tile > i:first-child{width:18px;text-align:center;color:var(--md-sys-color-on-surface-variant)}
+.abt-tile__t{flex:1;min-width:0}
+.abt-tile__chev{flex:0 0 auto;font-size:.78rem;color:var(--md-sys-color-on-surface-variant)}
+
+.abt-foot{margin-top:26px;font-size:.76rem;line-height:1.6;
+  color:var(--md-sys-color-on-surface-variant)}
+
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:50;
+  background:var(--md-sys-color-inverse-surface);color:var(--md-sys-color-inverse-on-surface);
+  padding:11px 20px;border-radius:var(--rmf-radius-full);font-weight:600;font-size:.9rem;
+  box-shadow:var(--rmf-elev-modal);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:45;overflow:hidden}
+.confetti i{position:absolute;left:50%;top:46%;width:10px;height:14px;opacity:0;
+  will-change:transform,opacity;animation:burst var(--dur,1.4s) cubic-bezier(.12,.66,.32,1) var(--delay,0s) forwards}
+@keyframes burst{
+  0%{transform:translate(-50%,-50%) scale(.3);opacity:1}
+  12%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) rotate(var(--rot)) scale(1);opacity:0}
+}
+
+.menu{position:absolute;top:58px;right:20px;background:var(--md-sys-color-surface);border-radius:var(--rmf-radius-md);
+  box-shadow:var(--rmf-elev-modal);z-index:30;overflow:hidden;min-width:220px;border:1px solid var(--md-sys-color-outline-variant)}
+.menu button{display:flex;width:100%;align-items:center;gap:13px;padding:14px 18px;border:none;
+  background:transparent;color:var(--md-sys-color-on-surface);font:inherit;font-size:.95rem;font-weight:500;cursor:pointer;text-align:left}
+.menu button i{width:18px;text-align:center;color:var(--md-sys-color-on-surface-variant)}
+.menu button:hover{background:var(--md-sys-color-surface-container-high)}
+.menu button.danger,.menu button.danger i{color:var(--md-sys-color-error)}
+.menu hr{border:none;border-top:1px solid var(--md-sys-color-outline-variant);margin:0}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:calc(100dvh - 170px);padding:24px 16px;text-align:center}
+.empty .big{font-size:2.6rem;color:var(--md-sys-color-primary);margin-bottom:14px}
+.empty h3{margin:0 0 6px;font-size:1.15rem;font-weight:700}
+.empty p{margin:0;color:var(--md-sys-color-on-surface-variant);font-size:.92rem}
+
+/* ── Accordion: possíveis números pulados (sugestão do consenso) ── */
+.suggest{margin:14px 0;border:1px solid var(--rmf-warning-border);border-radius:var(--rmf-radius-md);
+  background:var(--rmf-warning-fill,color-mix(in srgb,var(--md-sys-color-warning) 10%,transparent));overflow:hidden}
+.suggest summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:13px 16px;font-weight:700;font-size:.92rem;color:var(--md-sys-color-on-surface)}
+.suggest summary::-webkit-details-marker{display:none}
+.suggest summary .lead{flex:0 0 auto;color:var(--md-sys-color-warning);font-size:1.05rem}
+.suggest summary .ttl{flex:1;min-width:0}
+.suggest summary .pill{flex:0 0 auto;background:var(--md-sys-color-warning);color:#fff;
+  font-size:.78rem;font-weight:800;min-width:22px;height:22px;padding:0 7px;border-radius:11px;
+  display:inline-flex;align-items:center;justify-content:center}
+.suggest summary .chev{flex:0 0 auto;color:var(--md-sys-color-on-surface-variant);font-size:.85rem;transition:transform .2s}
+.suggest[open] summary .chev{transform:rotate(180deg)}
+.suggest .body{padding:0 16px 14px}
+.suggest .desc{font-size:.82rem;color:var(--md-sys-color-on-surface-variant);margin:0 0 10px}
+.suggest .sgrid{display:flex;flex-wrap:wrap;gap:7px}
+.suggest .schip{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  padding:8px 12px;border-radius:var(--rmf-radius-full);border:1px solid var(--rmf-warning-border);
+  background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font:inherit;font-weight:700;font-size:.9rem}
+.suggest .schip:hover{background:var(--md-sys-color-surface-container-high)}
+.suggest .schip .cnt{font-size:.72rem;font-weight:600;color:var(--md-sys-color-on-surface-variant)}
+.suggest .schip .add{color:var(--md-sys-color-warning);font-size:.8rem}
+.suggest .actions{margin-top:12px;display:flex;gap:10px}
+
+/* ── Export QR ── */
+.qrout{display:grid;place-items:center}
+.qrout img{width:100%;max-width:300px;image-rendering:pixelated;background:#fff;padding:12px;border-radius:14px}
+
+/* ── Scanner de QR (câmera) ── */
+.qrscan{position:fixed;inset:0;z-index:60;background:#000}
+.qrscan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.qrscan .frame{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.qrscan .frame i{width:66vw;max-width:300px;aspect-ratio:1;border:3px solid rgba(255,255,255,.92);
+  border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.4)}
+.qrscan .hint{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 18px);
+  text-align:center;color:#fff;font-weight:600;font-size:.92rem;padding:0 24px;text-shadow:0 1px 5px rgba(0,0,0,.7)}
+.qrscan .bar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:12px;
+  padding:14px 16px calc(env(safe-area-inset-bottom) + 16px)}
+.qrscan .bar .nv-btn{flex:1}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="topbar-back" id="backBtn" title="Voltar" aria-label="Voltar" hidden><i class="fa-solid fa-chevron-left"></i></button>
+    <img src="./res/bingo_logo.png" class="brand-logo" id="brandLogo" alt="Corretor de Bingos">
+    <h1 id="appTitle">Corretor de Bingos</h1>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="menuBtn" title="Menu" aria-label="Menu"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+  </div>
+</header>
+
+<div class="app">
+  <main id="main"></main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Corretor de Bingos: PWA (localStorage, sem login)
+   Cartelas 5x5 estilo B-I-N-G-O (1–75, centro livre)
+   Vitória: cartela cheia
+   ============================================================ */
+const LETTERS = ["B","I","N","G","O"];
+const RANGES  = {B:[1,15], I:[16,30], N:[31,45], G:[46,60], O:[61,75]};
+const K_CARDS = "bingos.cards.v1";
+const K_DRAWN = "bingos.drawn.v1";
+/* K_UID ("bingos.uid.v1") era o id anônimo do aparelho enviado ao /api/sync.
+   Sem backend, ninguém precisa mais se identificar, então foi removido. */
+
+const $ = (s,r=document)=>r.querySelector(s);
+const el = (t,p={})=>Object.assign(document.createElement(t),p);
+const ic = n=>`<i class="fa-solid fa-${n}"></i>`;
+
+/* ---------- estado ---------- */
+let cards = load(K_CARDS, []);
+let drawn = new Set(load(K_DRAWN, []));   // números globais 1–75 já sorteados
+let celebrated = new Set();               // ids de cartelas já comemoradas nesta sessão
+
+/* ---------- consenso (DESATIVADO) ----------
+   O consenso dependia de um backend (POST /api/sync) que juntava os números
+   marcados por todos os aparelhos na mesma sala e devolvia o que a maioria já
+   tinha marcado. Ele cumpriu sua finalidade nos bingos locais em que foi usado.
+   Agora o app é público e roda como página 100% estática (GitHub Pages), sem
+   servidor pra guardar esse estado compartilhado, então o endpoint foi
+   removido do front-end.
+   O que sobrou aqui é inerte de propósito: `consensus` fica sempre vazio, o
+   accordion de sugestões nunca aparece e os pontos que chamavam o sync viraram
+   no-op. Nada mais é feito na marcação, que sempre foi local (localStorage).
+   Pra religar um dia: reponha o fetch em syncConsensus() e o setInterval em
+   startPolling(). O resto da UI já está preparado. */
+let consensus = [];        // [{n,count}] números que a maioria marcou, sempre vazio agora
+let consensusUsers = 0;    // usuários ativos no momento, sempre 0 agora
+let suggestRefresher = null;  // callback p/ redesenhar o accordion (setado na viewPlay)
+
+function load(k,def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def }catch{ return def } }
+function saveCards(){ localStorage.setItem(K_CARDS, JSON.stringify(cards)) }
+function saveDrawn(){ localStorage.setItem(K_DRAWN, JSON.stringify([...drawn])) }
+function uid(){ return "c"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4) }
+
+/* Sync do consenso: desativado junto com o backend (veja o bloco acima).
+   Mantido como no-op para não espalhar `if` pelos pontos de marcação. */
+function syncConsensus(){ /* sem backend: nada a enviar nem a receber */ }
+/* números do consenso que ESTE aparelho ainda não marcou */
+function suggestedNumbers(){
+  return consensus.filter(c=>!drawn.has(c.n)).sort((a,b)=>b.count-a.count);
+}
+function startPolling(){ /* sem backend: nada a pollar */ }
+function stopPolling(){ /* sem backend: nada a parar */ }
+
+function colOf(n){ return Math.floor((n-1)/15) }
+function letterOf(n){ return LETTERS[colOf(n)] }
+
+function cardNumbers(card){
+  const out=[];
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    if(r===2&&c===2) continue;
+    const v=card.grid[r][c];
+    if(typeof v==="number") out.push(v);
+  }
+  return out;
+}
+function remainingCount(card){ return cardNumbers(card).filter(n=>!drawn.has(n)).length; }
+
+/* ---------- roteamento ---------- */
+let route = {name:"home"};
+
+/* ---------- Voltar do Android (botão físico / gesto) ----------
+   Cada camada dismissível (tela interna, modal, menu, leitor QR) empilha
+   uma entrada no histórico. O "voltar" dispara popstate e fechamos só a
+   camada do topo. Assim o botão desfaz modais/telas antes de sair do app. */
+const backStack = [];                       // funções de fechamento (topo fecha 1º)
+let suppressPop = false;                    // ignora o popstate gerado por nós
+let afterPop = null;                        // ação a rodar após sincronizar o histórico
+function pushLayer(close){
+  backStack.push(close);
+  history.pushState({n:backStack.length}, "");
+}
+/* fecha a camada do topo pela UI (scrim, botão Fechar/Cancelar, seta, item de menu).
+   `after` roda só depois do histórico voltar, o que evita corrida ao abrir outra camada. */
+function closeLayer(after){
+  if(!backStack.length){ if(after) after(); return; }
+  const close = backStack.pop();
+  if(close) close();
+  suppressPop = true;
+  afterPop = after || null;
+  history.back();                           // consome a entrada do histórico
+}
+window.addEventListener("popstate", ()=>{
+  if(suppressPop){                          // veio do closeLayer: já fechou a camada
+    suppressPop=false;
+    const fn=afterPop; afterPop=null;
+    if(fn) fn();
+    return;
+  }
+  const close = backStack.pop();
+  if(close) close();                        // veio do voltar do Android: fecha 1 camada
+});
+
+function go(name, params={}){
+  if(name==="home"){
+    route = {name:"home"};
+    if(backStack.length){                   // desfaz todas as camadas pendentes
+      const n=backStack.length; backStack.length=0;
+      suppressPop=true; history.go(-n);
+    }
+    render();
+    return;
+  }
+  const same = name===route.name && (params.id??null)===(route.id??null);
+  route = {name, ...params};
+  if(!same) pushLayer(()=>{ route={name:"home"}; render(); });
+  render();
+}
+
+function render(){
+  closeMenu();
+  updateHeader();
+  suggestRefresher=null;
+  stopPolling();
+  const m = $("#main");
+  m.innerHTML="";
+  m.classList.toggle("home", route.name==="home");
+  if(route.name==="home")   m.append(viewHome());
+  if(route.name==="editor") m.append(viewEditor(route.id));
+  if(route.name==="play"){ m.append(viewPlay()); startPolling(); }
+}
+
+function updateHeader(){
+  const home = route.name==="home";
+  $("#backBtn").hidden  = home;   // seta só fora da Home; logo aparece sempre
+  const titles = { home:"Corretor de Bingos", play:"Corrigir bingo",
+                   editor: route.id ? "Editar cartela" : "Nova cartela" };
+  $("#appTitle").textContent = titles[route.name] || "Corretor de Bingos";
+}
+
+/* ============================================================
+   HOME: lista de cartelas
+   ============================================================ */
+function viewHome(){
+  const wrap = el("div");
+
+  if(cards.length===0){
+    const e = el("div",{className:"empty"});
+    e.innerHTML = `<div class="big">${ic("ticket-simple")}</div>
+      <h3>Nenhuma cartela ainda</h3>
+      <p>Cadastre as cartelas do bingo antes da festa.<br>
+      Depois é só ir digitando os números sorteados.</p>`;
+    wrap.append(e);
+  } else {
+    wrap.append(el("h2",{className:"section",textContent:`Cartelas (${cards.length})`}));
+    cards.forEach(card=>{
+      const row = el("div",{className:"cardrow"});
+      row.onclick = ()=>go("editor",{id:card.id});
+      const mini = el("div",{className:"mini"});
+      for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+        const i=el("i"); if(r===2&&c===2) i.className="f"; mini.append(i);
+      }
+      const info = el("div",{className:"info"});
+      info.innerHTML = `<b>${escapeHtml(card.name||"Sem nome")}</b>
+        <span>${cardNumbers(card).length} números · toque para editar</span>`;
+      row.append(mini,info,el("div",{className:"chev",innerHTML:ic("chevron-right")}));
+      wrap.append(row);
+    });
+  }
+
+  if(cards.length===0){
+    // Sem cartelas: única ação é criar, extended FAB "Nova cartela"
+    const bNew = el("button",{className:"fab-main",title:"Nova cartela",innerHTML:`${ic("plus")} Nova cartela`});
+    bNew.onclick = ()=>go("editor",{id:null});
+    wrap.append(bNew);
+  } else {
+    // FAB pequeno (+) acima do FAB principal "Corrigir bingo"
+    const bNew = el("button",{className:"fab-mini",title:"Nova cartela","aria-label":"Nova cartela",innerHTML:ic("plus")});
+    bNew.onclick = ()=>go("editor",{id:null});
+    const bPlay = el("button",{className:"fab-main",title:"Corrigir bingo",innerHTML:`${ic("play")} Corrigir bingo`});
+    bPlay.onclick = ()=>go("play");
+    wrap.append(bNew,bPlay);
+  }
+  return wrap;
+}
+
+/* ============================================================
+   EDITOR
+   ============================================================ */
+function viewEditor(id){
+  const editing = cards.find(c=>c.id===id);
+  const card = editing
+    ? JSON.parse(JSON.stringify(editing))
+    : { id:uid(), name:"", grid:Array.from({length:5},()=>Array(5).fill("")) };
+  if(!editing) card.grid[2][2]="FREE";
+
+  const wrap = el("div");
+  const c = el("div",{className:"m3-card m3-card-surface card"});
+
+  const f = el("div",{className:"nv-field field"});
+  f.innerHTML = `<label class="nv-field__label">Nome / nº da cartela</label>`;
+  const nameI = el("input",{className:"nv-input",type:"text",value:card.name||"",placeholder:"Ex.: Cartela 14 da Dona Zefa"});
+  f.append(nameI); c.append(f);
+
+  const grid = el("div",{className:"bingo"});
+  LETTERS.forEach(L=>grid.append(el("div",{className:"head",textContent:L})));
+  const inputs=[];
+  for(let r=0;r<5;r++){
+    inputs[r]=[];
+    for(let col=0;col<5;col++){
+      if(r===2&&col===2){
+        grid.append(el("div",{className:"cell free",textContent:"LIVRE"})); inputs[r][col]=null; continue;
+      }
+      const cell=el("div",{className:"cell"});
+      const inp=el("input",{type:"text",inputMode:"numeric",maxLength:2,
+        value: typeof card.grid[r][col]==="number"?card.grid[r][col]:""});
+      const [lo,hi]=RANGES[LETTERS[col]];
+      inp.placeholder = `${lo}–${hi}`;
+      inp.oninput=()=>{ inp.value=inp.value.replace(/\D/g,""); validate(); autoAdvance(inp,r,col); };
+      cell.append(inp); grid.append(cell); inputs[r][col]=inp;
+    }
+  }
+  c.append(grid);
+  const hint = el("div",{className:"hint",
+    innerHTML:"Cada coluna no seu intervalo: B 1–15, I 16–30, N 31–45, G 46–60, O 61–75."});
+  c.append(hint);
+  wrap.append(c);
+
+  function autoAdvance(inp,r,col){
+    if(inp.value.length===2){
+      let nr=r,nc=col+1;
+      while(nr<5){ if(nc>4){nc=0;nr++} if(nr===2&&nc===2){nc++;continue}
+        if(nr<5 && inputs[nr] && inputs[nr][nc]){ inputs[nr][nc].focus(); return } nc++; }
+    }
+  }
+  function readGrid(){
+    const g=Array.from({length:5},()=>Array(5).fill(""));
+    g[2][2]="FREE";
+    for(let r=0;r<5;r++)for(let col=0;col<5;col++){
+      if(r===2&&col===2) continue;
+      const v=inputs[r][col].value.trim();
+      g[r][col]= v===""?"" : parseInt(v,10);
+    }
+    return g;
+  }
+  function countFilled(g){let n=0;for(let r=0;r<5;r++)for(let col=0;col<5;col++){if(r===2&&col===2)continue;if(typeof g[r][col]==="number")n++}return n;}
+  function validate(){
+    const g=readGrid(); let ok=true; const msgs=[];
+    const seenCol=[{},{},{},{},{}];
+    for(let r=0;r<5;r++)for(let col=0;col<5;col++){
+      if(r===2&&col===2) continue;
+      const inp=inputs[r][col]; inp.classList.remove("bad");
+      const v=g[r][col]; if(v==="") continue;
+      const [lo,hi]=RANGES[LETTERS[col]];
+      if(!(v>=lo&&v<=hi)){ inp.classList.add("bad"); ok=false; msgs.push(`${v} fora da coluna ${LETTERS[col]} (${lo}–${hi})`); continue; }
+      if(seenCol[col][v]){ inp.classList.add("bad"); seenCol[col][v].classList.add("bad"); ok=false; msgs.push(`${v} repetido na coluna ${LETTERS[col]}`); }
+      else seenCol[col][v]=inp;
+    }
+    const filled = countFilled(g);
+    hint.classList.remove("err","ok");
+    if(!ok){ hint.classList.add("err"); hint.textContent = msgs[0]; }
+    else if(filled<24){ hint.textContent = `Faltam ${24-filled} de 24 números`; }
+    else { hint.classList.add("ok"); hint.innerHTML = `${ic("circle-check")} Cartela completa e válida`; }
+    return ok && filled===24;
+  }
+
+  const fab=el("div",{className:"fab-row"});
+  const bSave=el("button",{className:"nv-btn nv-btn--filled nv-btn--block",innerHTML:`${ic("floppy-disk")} Salvar cartela`});
+  bSave.onclick=()=>{
+    if(!validate()){ toast("Confira os números destacados"); return; }
+    card.name=nameI.value.trim()||`Cartela ${cards.length+1}`;
+    card.grid=readGrid();
+    if(editing) Object.assign(editing,{name:card.name,grid:card.grid});
+    else cards.push(card);
+    saveCards();
+    toast(editing?"Cartela atualizada":"Cartela salva");
+    go("home");
+  };
+  fab.append(bSave);
+
+  if(editing){
+    const c2=el("div",{className:"card"});
+    const del=el("button",{className:"nv-btn nv-btn--danger nv-btn--block",innerHTML:`${ic("trash-can")} Excluir esta cartela`});
+    del.onclick=()=>confirmModal("Excluir cartela?",`“${editing.name}” será removida.`,"Excluir",()=>{
+      cards=cards.filter(x=>x.id!==editing.id); saveCards(); toast("Cartela excluída"); go("home");
+    });
+    c2.append(del); wrap.append(c2);
+  }
+
+  wrap.append(fab);
+  setTimeout(validate,0);
+  setTimeout(()=>{ if(!editing) inputs[0][0].focus(); },50);
+  return wrap;
+}
+
+/* ============================================================
+   PLAY
+   ============================================================ */
+function viewPlay(){
+  const wrap=el("div");
+
+  const dial=el("div",{className:"m3-card m3-card-surface dial"});
+  const last=el("div",{className:"lastnum"});
+  dial.append(last);
+
+  const ni=el("div",{className:"numinput"});
+  const input=el("input",{type:"text",inputMode:"numeric",maxLength:2,placeholder:"Nº","aria-label":"Número sorteado"});
+  const add=el("button",{className:"nv-btn nv-btn--filled",innerHTML:`${ic("plus")} Marcar`});
+  ni.append(input,add); dial.append(ni);
+  const summary=el("div",{className:"count-summary"});
+  dial.append(summary);
+  wrap.append(dial);
+
+  const drawnWrap=el("div",{className:"m3-card m3-card-surface",style:"padding:14px 16px;margin:14px 0"});
+  drawnWrap.append(el("div",{className:"muted",style:"font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em",
+    textContent:"Números sorteados (toque para remover)"}));
+  const drawnBox=el("div",{className:"drawn"});
+  drawnWrap.append(drawnBox);
+  wrap.append(drawnWrap);
+
+  /* ── Accordion: possíveis números pulados (entre "sorteados" e as cartelas) ── */
+  const suggestBox=el("details",{className:"suggest"});
+  suggestBox.style.display="none";
+  const sugSummary=el("summary");
+  sugSummary.innerHTML=`<span class="lead">${ic("lightbulb")}</span>
+    <span class="ttl">Possíveis números pulados</span>
+    <span class="pill">0</span><span class="chev">${ic("chevron-down")}</span>`;
+  const sugBody=el("div",{className:"body"});
+  const sugDesc=el("p",{className:"desc"});
+  const sugGrid=el("div",{className:"sgrid"});
+  const sugActions=el("div",{className:"actions"});
+  const sugAll=el("button",{className:"nv-btn nv-btn--filled",style:"height:40px;font-size:.88rem",
+    innerHTML:`${ic("check-double")} Marcar todos`});
+  sugActions.append(sugAll);
+  sugBody.append(sugDesc,sugGrid,sugActions);
+  suggestBox.append(sugSummary,sugBody);
+  wrap.append(suggestBox);
+
+  function renderSuggestions(){
+    const sug=suggestedNumbers();
+    // Só aparece quando há números em consenso que este aparelho ainda não marcou.
+    if(sug.length===0){ suggestBox.style.display="none"; return; }
+    suggestBox.style.display="";
+    sugSummary.querySelector(".pill").textContent=sug.length;
+    sugDesc.textContent=`A maioria (de ${consensusUsers} aparelhos) marcou estes números, mas você ainda não. `
+      +`É só uma sugestão. Confira no telão antes de marcar.`;
+    sugGrid.innerHTML="";
+    sug.forEach(({n,count})=>{
+      const chip=el("button",{className:"schip"});
+      chip.innerHTML=`${letterOf(n)}-${n} <span class="cnt">${count} de ${consensusUsers}</span> <span class="add">${ic("plus")}</span>`;
+      chip.onclick=()=>{ addNumber(n); };
+      sugGrid.append(chip);
+    });
+    sugAll.onclick=()=>{
+      sug.forEach(({n})=>{ if(!drawn.has(n)) drawn.add(n); });
+      saveDrawn(); refresh(); checkWinners(); renderSuggestions(); syncConsensus();
+      toast(`${sug.length} número(s) marcado(s)`);
+    };
+  }
+  suggestRefresher=renderSuggestions;
+
+  wrap.append(el("h2",{className:"section",textContent:"Cartelas"}));
+  const list=el("div");
+  wrap.append(list);
+
+  function refresh(){
+    const arr=[...drawn];
+    if(arr.length){
+      const n=arr[arr.length-1];
+      last.innerHTML=`Último número<b><span class="lett">${letterOf(n)}</span>${n}</b>`;
+    } else last.innerHTML=`Último número<b style="color:var(--md-sys-color-outline);font-size:2rem">-</b>`;
+
+    const winners=cards.filter(c=>remainingCount(c)===0).length;
+    const closest=cards.length?Math.min(...cards.map(remainingCount)):0;
+    summary.innerHTML=`
+      <div><b>${drawn.size}</b><span>sorteados</span></div>
+      <div><b>${winners}</b><span>bateram</span></div>
+      <div><b>${cards.length?closest:"–"}</b><span>menor falta</span></div>`;
+
+    drawnBox.innerHTML="";
+    if(drawn.size===0) drawnBox.append(el("span",{className:"muted",style:"font-size:.85rem",textContent:"nenhum ainda"}));
+    [...drawn].forEach(n=>{
+      const chip=el("button",{className:"chip",innerHTML:`${letterOf(n)}-${n}<span class="x">${ic("xmark")}</span>`});
+      chip.onclick=()=>{ drawn.delete(n); saveDrawn(); refresh(); renderSuggestions(); syncConsensus(); };
+      drawnBox.append(chip);
+    });
+
+    list.innerHTML="";
+    [...cards].sort((a,b)=>remainingCount(a)-remainingCount(b)).forEach(card=>{
+      const rem=remainingCount(card), total=cardNumbers(card).length, done=total-rem;
+      const pc=el("div",{className:"pcard"});
+      if(rem===0) pc.classList.add("win");
+      else if(rem<=2) pc.classList.add("close");
+      const info=el("div",{className:"pinfo"});
+      info.innerHTML=`<b>${escapeHtml(card.name)}</b>
+        <div class="bar"><i style="width:${Math.round(done/total*100)}%"></i></div>`;
+      const badge=el("div",{className:"badge"});
+      badge.innerHTML = rem===0
+        ? `${ic("trophy")}<span class="n">BINGO</span>`
+        : `<span class="n">${rem}</span>${rem===1?"falta":"faltam"}`;
+      pc.append(info,badge);
+      pc.onclick=()=>showCardModal(card);
+      list.append(pc);
+    });
+  }
+
+  function addNumber(n){
+    if(drawn.has(n)) return;
+    drawn.add(n); saveDrawn(); refresh(); checkWinners(); renderSuggestions(); syncConsensus();
+  }
+  function commit(){
+    const raw=input.value.replace(/\D/g,""); input.value="";
+    if(raw==="") return;
+    const n=parseInt(raw,10);
+    if(!(n>=1&&n<=75)){ toast("Digite um número de 1 a 75"); input.focus(); return; }
+    if(drawn.has(n)){ toast(`${letterOf(n)}-${n} já foi sorteado`); input.focus(); return; }
+    addNumber(n); input.focus();
+  }
+  add.onclick=commit;
+  input.onkeydown=e=>{ if(e.key==="Enter") commit(); };
+
+  function checkWinners(){
+    const novos=cards.filter(c=>remainingCount(c)===0 && !celebrated.has(c.id));
+    if(novos.length){ novos.forEach(c=>celebrated.add(c.id)); celebrate(novos); }
+  }
+
+  refresh();
+  renderSuggestions();
+  setTimeout(()=>input.focus(),60);
+  return wrap;
+}
+
+/* "Novo sorteio": acessível pelo menu ⋮ durante a correção */
+function resetDraw(){
+  confirmModal("Começar novo sorteio?","Os números sorteados serão apagados. As cartelas continuam salvas.","Apagar números",()=>{
+    drawn.clear(); celebrated.clear(); saveDrawn();
+    if(route.name==="play") go("play");
+    toast("Sorteio zerado");
+  });
+}
+
+function showCardModal(card){
+  const rem=remainingCount(card);
+  const body=el("div");
+  const grid=el("div",{className:"bingo",style:"margin-bottom:8px"});
+  LETTERS.forEach(L=>grid.append(el("div",{className:"head",textContent:L})));
+  for(let r=0;r<5;r++)for(let col=0;col<5;col++){
+    if(r===2&&col===2){ grid.append(el("div",{className:"cell free",textContent:"LIVRE"})); continue; }
+    const v=card.grid[r][col];
+    const cell=el("div",{className:"cell"+(drawn.has(v)?" marked":"")});
+    cell.innerHTML = `${v}${drawn.has(v)?`<span class="tick">${ic("circle-check")}</span>`:""}`;
+    grid.append(cell);
+  }
+  body.append(grid);
+  const st=el("p",{style:"text-align:center;font-weight:700;margin:6px 0 0",
+    className: rem===0?"":"muted",
+    innerHTML: rem===0?`<span style="color:var(--md-sys-color-success)">${ic("trophy")} Cartela cheia!</span>`:`Faltam ${rem} número${rem>1?"s":""}`});
+  body.append(st);
+  openModal(card.name, body, [{label:"Fechar",cls:"nv-btn nv-btn--filled nv-btn--block",fn:closeModal}]);
+}
+
+/* ============================================================
+   Comemoração
+   ============================================================ */
+function celebrate(winners){
+  confetti();
+  if(navigator.vibrate) navigator.vibrate([120,60,120,60,200]);
+  const body=el("div");
+  body.innerHTML=`<div class="burst">${ic("trophy")}</div>`;
+  const names=el("div",{className:"winners"});
+  names.innerHTML = winners.map(w=>`${ic("star")}${escapeHtml(w.name)}`).join("<br>");
+  body.append(names);
+  openModal("BINGO!", body, [{label:"Continuar",cls:"nv-btn nv-btn--filled nv-btn--block lg",fn:closeModal}], "Cartela cheia!");
+}
+function confetti(){
+  const colors=["#4B5C92","#B7C0E5","#22C55E","#F59E0B","#74566D","#2563EB","#EF4444","#FED7F2"];
+  const box=el("div",{className:"confetti"});
+  const N=150, rnd=(a,b)=>a+Math.random()*(b-a);
+  for(let i=0;i<N;i++){
+    const p=el("i");
+    const ang=rnd(0,Math.PI*2);
+    const dist=rnd(120,Math.min(window.innerWidth,window.innerHeight)*0.55);
+    const tx=Math.cos(ang)*dist;
+    const ty=Math.sin(ang)*dist + rnd(80,260);   // estoura pra fora e depois cai
+    p.style.setProperty("--tx",tx.toFixed(0)+"px");
+    p.style.setProperty("--ty",ty.toFixed(0)+"px");
+    p.style.setProperty("--rot",Math.floor(rnd(0,720))+"deg");
+    p.style.setProperty("--dur",rnd(1.1,2.0).toFixed(2)+"s");
+    p.style.setProperty("--delay",rnd(0,0.12).toFixed(2)+"s");
+    p.style.background=colors[i%colors.length];
+    const w=rnd(7,12); p.style.width=w.toFixed(0)+"px";
+    p.style.height=(w*rnd(1,1.5)).toFixed(0)+"px";
+    if(i%4===0) p.style.borderRadius="50%";      // mistura círculos e retângulos
+    box.append(p);
+  }
+  document.body.append(box);
+  setTimeout(()=>box.remove(),2800);
+}
+
+/* ============================================================
+   Modais / toast / menu
+   ============================================================ */
+function openModal(title, bodyEl, actions, subtitle){
+  const root=$("#modalRoot");
+  const scrim=el("div",{className:"scrim"});
+  const modal=el("div",{className:"modal"});
+  modal.append(el("h3",{textContent:title}));
+  if(subtitle) modal.append(el("div",{className:"winners",style:"margin:0 0 4px",textContent:subtitle}));
+  modal.append(bodyEl);
+  const row=el("div",{className:"row"});
+  actions.forEach(a=>{
+    const b=el("button",{className:a.cls,innerHTML:a.label}); b.onclick=a.fn; row.append(b);
+  });
+  modal.append(row);
+  scrim.append(modal);
+  scrim.onclick=e=>{ if(e.target===scrim) closeModal(); };
+  root.innerHTML=""; root.append(scrim);
+  pushLayer(clearModal);                     // o "voltar" do Android fecha o modal
+}
+function clearModal(){ $("#modalRoot").innerHTML=""; }   // limpeza pura (sem histórico)
+function closeModal(){ closeLayer(); }                   // fecha via UI/voltar
+function confirmModal(title,msg,okLabel,fn){
+  const body=el("p",{className:"muted",textContent:msg,style:"margin:4px 0 0"});
+  openModal(title,body,[
+    {label:"Cancelar",cls:"nv-btn nv-btn--outline",fn:closeModal},
+    {label:okLabel,cls:"nv-btn nv-btn--danger",fn:()=>closeLayer(fn)}
+  ]);
+}
+
+let toastT;
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+function closeMenu(){ const m=$("#menuPop"); if(m) m.remove(); }   // limpeza pura
+$("#menuBtn").onclick=(e)=>{
+  e.stopPropagation();
+  if($("#menuPop")){ closeLayer(); return; }
+  const pop=el("div",{className:"menu",id:"menuPop"});
+  const mk=(icon,label,fn,cls="")=>{ const b=el("button",{className:cls,innerHTML:`${ic(icon)} ${label}`}); b.onclick=()=>closeLayer(fn); return b; };
+  if(route.name==="play"){
+    pop.append(mk("arrows-rotate","Novo sorteio",resetDraw), el("hr"));
+  }
+  pop.append(
+    mk("file-export","Exportar cartelas (backup)",exportCards),
+    mk("file-import","Importar cartelas",importCards),
+    el("hr"),
+    mk("qrcode","Exportar via QR Code",exportQR),
+    mk("camera","Importar via QR Code",importQR),
+    el("hr"),
+    mk("circle-info","Sobre",aboutModal),
+    el("hr"),
+    mk("trash-can","Apagar tudo",wipeAll,"danger")
+  );
+  document.querySelector(".topbar-inner").append(pop);
+  pushLayer(closeMenu);                      // o "voltar" do Android fecha o menu
+};
+document.addEventListener("click",e=>{
+  if($("#menuPop") && !e.target.closest("#menuPop") && !e.target.closest("#menuBtn")) closeLayer();
+});
+
+$("#backBtn").onclick=()=>closeLayer();
+
+function exportCards(){
+  if(cards.length===0){ toast("Nenhuma cartela pra exportar"); return; }
+  const data=JSON.stringify({app:"corretor-bingos",v:1,cards},null,2);
+  const blob=new Blob([data],{type:"application/json"});
+  const a=el("a",{href:URL.createObjectURL(blob),download:"cartelas-bingo.json"});
+  document.body.append(a); a.click(); a.remove();
+  toast("Backup gerado");
+}
+/* adiciona cartelas vindas de arquivo OU de QR; devolve quantas entraram */
+function addImportedCards(incoming){
+  if(!Array.isArray(incoming)) return -1;
+  let added=0;
+  incoming.forEach(c=>{
+    if(c && Array.isArray(c.grid)){
+      cards.push({id:uid(),name:c.name||`Cartela ${cards.length+1}`,grid:c.grid}); added++;
+    }
+  });
+  if(added>0){ saveCards(); render(); }
+  return added;
+}
+function importCards(){
+  const inp=el("input",{type:"file",accept:"application/json,.json"});
+  inp.onchange=()=>{
+    const file=inp.files[0]; if(!file) return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      try{
+        const obj=JSON.parse(rd.result);
+        const incoming=Array.isArray(obj)?obj:obj.cards;
+        const added=addImportedCards(incoming);
+        if(added<0) throw 0;
+        toast(`${added} cartela(s) importada(s)`);
+      }catch{ toast("Arquivo inválido"); }
+    };
+    rd.readAsText(file);
+  };
+  inp.click();
+}
+
+/* ============================================================
+   QR Code: exportação/importação de cartelas
+   Libs puras carregadas sob demanda (mantém o app leve).
+   ============================================================ */
+const QR_GEN_SRC  = "./res/assets/js/qrcode-generator.js";
+const QR_READ_SRC = "./res/assets/js/jsqr.js";
+const QR_MAGIC = "BNGO1";
+const _scripts = {};
+function loadScript(src){
+  return _scripts[src] || (_scripts[src]=new Promise((res,rej)=>{
+    const s=el("script",{src}); s.onload=res; s.onerror=()=>{ delete _scripts[src]; rej(new Error("load "+src)); };
+    document.head.append(s);
+  }));
+}
+
+/* grade 5x5 (centro livre) <-> 24 números em ordem (linha a linha) */
+function flattenGrid(grid){
+  const flat=[];
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    if(r===2&&c===2) continue;
+    const v=grid && grid[r] ? grid[r][c] : "";
+    flat.push(typeof v==="number"?v:0);
+  }
+  return flat;
+}
+function buildGrid(flat){
+  const g=Array.from({length:5},()=>Array(5).fill(""));
+  g[2][2]="FREE"; let i=0;
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    if(r===2&&c===2) continue;
+    const v=flat[i++];
+    g[r][c]=(typeof v==="number"&&v>=1&&v<=75)?v:"";
+  }
+  return g;
+}
+/* formato compacto: ["BNGO1", [[nome,[24 números]], ...]] */
+function qrEncode(){
+  return JSON.stringify([QR_MAGIC, cards.map(c=>[c.name||"", flattenGrid(c.grid)])]);
+}
+function qrDecode(str){
+  let obj; try{ obj=JSON.parse(str); }catch{ return null; }
+  if(!Array.isArray(obj)||obj[0]!==QR_MAGIC||!Array.isArray(obj[1])) return null;
+  return obj[1].map(item=>{
+    const name=Array.isArray(item)?item[0]:"";
+    const flat=Array.isArray(item)&&Array.isArray(item[1])?item[1]:[];
+    return {name:String(name||""),grid:buildGrid(flat)};
+  });
+}
+
+async function exportQR(){
+  if(cards.length===0){ toast("Nenhuma cartela pra exportar"); return; }
+  try{ await loadScript(QR_GEN_SRC); }
+  catch{ toast("Não foi possível carregar o gerador de QR"); return; }
+  const payload=qrEncode();
+  let url;
+  try{
+    if(qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs["UTF-8"])
+      qrcode.stringToBytes=qrcode.stringToBytesFuncs["UTF-8"];   // nomes com acento
+    const qr=qrcode(0,"M");          // tipo 0 = escolhe a menor versão que couber
+    qr.addData(payload,"Byte"); qr.make();
+    url=qr.createDataURL(6,4);
+  }catch{
+    const body=el("p",{className:"muted",style:"margin:4px 0 0",
+      textContent:`São ${cards.length} cartelas, dados demais para um único QR Code. Use “Exportar cartelas (backup)” e compartilhe o arquivo .json.`});
+    openModal("Muitas cartelas pra um QR", body,
+      [{label:"Entendi",cls:"nv-btn nv-btn--filled nv-btn--block",fn:closeModal}]);
+    return;
+  }
+  const body=el("div");
+  const out=el("div",{className:"qrout"});
+  out.append(el("img",{src:url,alt:"QR Code das cartelas"}));
+  body.append(out);
+  body.append(el("p",{className:"muted",style:"font-size:.85rem;margin:14px 0 0",
+    textContent:`${cards.length} cartela(s). No outro aparelho, use o menu ⋮ → “Importar via QR Code”.`}));
+  openModal("Exportar via QR Code", body,
+    [{label:"Fechar",cls:"nv-btn nv-btn--filled nv-btn--block",fn:closeModal}]);
+}
+
+function handleScanned(data){
+  const incoming=qrDecode(data);
+  if(!incoming){ toast("QR Code não reconhecido"); return false; }
+  const added=addImportedCards(incoming);
+  toast(`${added} cartela(s) importada(s)`);
+  return true;
+}
+
+async function importQR(){
+  try{ await loadScript(QR_READ_SRC); }
+  catch{ toast("Não foi possível carregar o leitor de QR"); return; }
+  // câmera só funciona em HTTPS/localhost; senão cai pra imagem
+  if(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    startCameraScan();
+  } else {
+    scanFromImageFile();
+  }
+}
+
+function scanFromImageFile(){
+  const inp=el("input",{type:"file",accept:"image/*"});
+  inp.onchange=()=>{
+    const file=inp.files[0]; if(!file) return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const cv=el("canvas"); cv.width=img.naturalWidth; cv.height=img.naturalHeight;
+        const ctx=cv.getContext("2d"); ctx.drawImage(img,0,0);
+        let code=null;
+        try{ const d=ctx.getImageData(0,0,cv.width,cv.height); code=jsQR(d.data,d.width,d.height); }catch{}
+        if(code && code.data) handleScanned(code.data);
+        else toast("Nenhum QR Code encontrado na imagem");
+      };
+      img.onerror=()=>toast("Imagem inválida");
+      img.src=rd.result;
+    };
+    rd.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+async function startCameraScan(){
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}); }
+  catch{ toast("Sem acesso à câmera, selecione uma imagem"); return scanFromImageFile(); }
+
+  const overlay=el("div",{className:"qrscan"});
+  const video=el("video"); video.setAttribute("playsinline",""); video.muted=true;
+  const frame=el("div",{className:"frame",innerHTML:"<i></i>"});
+  const hint=el("div",{className:"hint",textContent:"Aponte para o QR Code das cartelas"});
+  const bar=el("div",{className:"bar"});
+  const bImg=el("button",{className:"nv-btn nv-btn--outline",innerHTML:`${ic("image")} Usar imagem`});
+  const bCancel=el("button",{className:"nv-btn nv-btn--filled",innerHTML:`${ic("xmark")} Cancelar`});
+  bar.append(bImg,bCancel);
+  overlay.append(video,frame,hint,bar);
+  document.body.append(overlay);
+
+  const cv=el("canvas"); const ctx=cv.getContext("2d",{willReadFrequently:true});
+  let stopped=false;
+  function cleanup(){ if(stopped) return; stopped=true; stream.getTracks().forEach(t=>t.stop()); overlay.remove(); }
+  pushLayer(cleanup);                        // o "voltar" do Android fecha o leitor
+  bCancel.onclick=()=>closeLayer();
+  bImg.onclick=()=>closeLayer(scanFromImageFile);
+
+  video.srcObject=stream;
+  try{ await video.play(); }catch{}
+  function tick(){
+    if(stopped) return;
+    if(video.readyState>=2 && video.videoWidth){
+      cv.width=video.videoWidth; cv.height=video.videoHeight;
+      ctx.drawImage(video,0,0,cv.width,cv.height);
+      let code=null;
+      try{ const d=ctx.getImageData(0,0,cv.width,cv.height); code=jsQR(d.data,d.width,d.height); }catch{}
+      if(code && code.data){ const d=code.data; closeLayer(()=>handleScanned(d)); return; }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+/* Modal "Sobre" */
+function aboutModal(){
+  const root=$("#modalRoot");
+  const scrim=el("div",{className:"scrim"});
+  const modal=el("div",{className:"modal modal--about"});
+
+  const head=el("div",{className:"abt-modal__head"});
+  head.innerHTML=`<div class="abt-modal__title">${ic("circle-info")} <span>Sobre</span></div>`;
+  const bClose=el("button",{className:"icon-btn",innerHTML:ic("xmark")});
+  bClose.setAttribute("aria-label","Fechar");
+  bClose.onclick=()=>closeModal();
+  head.append(bClose);
+
+  const swState = !("serviceWorker" in navigator) ? "não suportado"
+                : navigator.serviceWorker.controller ? "service worker ativo"
+                : "registrando…";
+
+  const body=el("div",{className:"abt-body"});
+  body.innerHTML=`
+    <!-- 1. Identidade -->
+    <span class="abt-icon" role="img" aria-label="Logo do Corretor de Bingos">
+      <img src="./res/bingo_logo.png" width="92" height="92" alt="Logo do Corretor de Bingos">
+    </span>
+    <div class="abt-name">Corretor de Bingos</div>
+    <div class="abt-ver">Cartelas corrigidas no seu aparelho</div>
+
+    <!-- 2. Slogan + crédito -->
+    <div class="abt-slogan">Corrija o bingo na hora</div>
+    <a class="abt-credit" href="https://vctgomes.com" target="_blank" rel="noopener noreferrer">
+      ${ic("globe")}<span class="abt-credit__link">vctgomes.com</span><span class="abt-credit__year">© 2026</span>
+    </a>
+
+    <!-- 3. O que é isto -->
+    <div class="abt-label" style="margin-top:30px">O que é isto</div>
+    <div class="abt-card">
+      Cadastre as cartelas uma vez e deixe o app corrigir enquanto o locutor canta:
+      <div style="height:10px"></div>
+      <div class="abt-src">${ic("circle-check")}<span><b>Marcação global:</b> você digita o número sorteado e ele é marcado em <i>todas</i> as cartelas de uma vez.</span></div>
+      <div class="abt-src">${ic("circle-check")}<span><b>Aviso de vitória:</b> cartela cheia dispara a comemoração na hora, sem conferir linha por linha.</span></div>
+      <div class="abt-src">${ic("circle-check")}<span><b>Quem está perto:</b> a lista mostra quantos números faltam para cada cartela bater.</span></div>
+      <div class="abt-src" style="margin-bottom:0">${ic("circle-check")}<span><b>Backup e QR Code:</b> exporte as cartelas para um arquivo ou passe para outro aparelho lendo um código.</span></div>
+    </div>
+
+    <!-- 4. Privacidade -->
+    <div class="abt-label" style="margin-top:30px">Para onde vão seus dados</div>
+    <div class="abt-card">Para lugar nenhum. As cartelas e o sorteio ficam no <code>localStorage</code> deste aparelho. Não há servidor, conta nem cadastro: nada é enviado, registrado ou compartilhado, e o app continua funcionando com a rede desligada.</div>
+
+    <!-- 5. Estado atual -->
+    <div class="abt-label" style="margin-top:30px">Estado atual</div>
+    <div class="abt-grid">
+      <div class="abt-sync">
+        <span class="abt-sync__l">${ic("table-cells")} <span>Cartelas</span></span>
+        <span class="abt-sync__v">${cards.length}</span>
+      </div>
+      <div class="abt-sync">
+        <span class="abt-sync__l">${ic("circle-dot")} <span>Sorteados</span></span>
+        <span class="abt-sync__v">${drawn.size} de 75</span>
+      </div>
+      <div class="abt-sync">
+        <span class="abt-sync__l">${ic("mobile-screen")} <span>Offline / PWA</span></span>
+        <span class="abt-sync__v">${swState}</span>
+      </div>
+    </div>
+
+    <!-- 6. Mais -->
+    <div class="abt-label" style="margin-top:30px">Mais</div>
+    <a class="abt-tile" href="https://github.com/VCTGomes/smart-bingo" target="_blank" rel="noopener noreferrer">
+      <i class="fa-brands fa-github"></i>
+      <span class="abt-tile__t">Código-fonte no GitHub</span>
+      <i class="fa-solid fa-arrow-up-right-from-square abt-tile__chev"></i>
+    </a>
+
+    <!-- Rodapé -->
+    <div class="abt-foot">Interface sobre o design system <b>RMF</b>, tokens do Material 3 e Inter.<br>Página estática, sem backend.</div>`;
+
+  modal.append(head,body);
+  scrim.append(modal);
+  scrim.onclick=e=>{ if(e.target===scrim) closeModal(); };
+  root.innerHTML=""; root.append(scrim);
+  pushLayer(clearModal);                     // o "voltar" do Android fecha o modal
+}
+function wipeAll(){
+  confirmModal("Apagar tudo?","Todas as cartelas e o sorteio atual serão apagados. Não dá pra desfazer.","Apagar tudo",()=>{
+    cards=[]; drawn.clear(); celebrated.clear(); saveCards(); saveDrawn(); go("home"); toast("Tudo apagado");
+  });
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+history.replaceState({n:0}, "");             // entrada base: o voltar a partir daqui sai do app
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "id": "corretor-bingos",
+  "name": "Corretor de Bingos",
+  "short_name": "Bingos",
+  "description": "Cadastre as cartelas e corrija o bingo na hora: digite os números sorteados e o app marca tudo e avisa quem bateu.",
+  "start_url": "./?client=pwa",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "orientation": "portrait",
+  "scope": "./",
+  "lang": "pt-BR",
+  "categories": ["games", "utilities"],
+  "icons": [
+    { "src": "./res/bingo_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./res/bingo_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./res/bingo_maskable_192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./res/bingo_maskable_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
